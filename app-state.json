@@ -1,0 +1,227 @@
+{
+  "menus": [
+    {
+      "id": "ad5e3339-eea1-4507-b665-1b6ec36f79a5",
+      "name": "ชาไต้หวัน",
+      "price": 25,
+      "active": true,
+      "color": "#d3a992"
+    },
+    {
+      "id": "903f1325-e14a-4d72-be60-d36ef11236ff",
+      "name": "ชาเขียว",
+      "price": 25,
+      "active": true,
+      "color": "#679e6a"
+    },
+    {
+      "id": "045bf5b2-1a21-4d1d-824b-7712b4bf0782",
+      "name": "ชาไทย",
+      "price": 25,
+      "active": true,
+      "color": "#e59710"
+    },
+    {
+      "id": "76374c54-28d6-40fd-99c9-e9381659138f",
+      "name": "ชามะลิ ชามะลิสตอเบอรรี่",
+      "price": 25,
+      "active": true,
+      "color": "#fbffc2"
+    },
+    {
+      "id": "3d1bebe2-a49c-4563-8c8c-ca0d2f70644b",
+      "name": "โกโก้",
+      "price": 35,
+      "active": true,
+      "color": "#87421d"
+    },
+    {
+      "id": "6753cf8e-8f23-4654-a4e7-d865c3bc2590",
+      "name": "กาเเฟ",
+      "price": 35,
+      "active": true,
+      "color": "#b66c43"
+    },
+    {
+      "id": "b014e218-1b69-459d-aad3-c832bf3419ac",
+      "name": "นมชมพู",
+      "price": 35,
+      "active": true,
+      "color": "#d59acd"
+    },
+    {
+      "id": "e4d32b9f-3fba-43fa-bec5-910cd23475ec",
+      "name": "มัทฉะสตอเบอรี่",
+      "price": 59,
+      "active": true,
+      "color": "#154c30"
+    },
+    {
+      "id": "28ba1347-686e-49ac-81db-56981a02e127",
+      "name": "มัทฉะลาเต้",
+      "price": 49,
+      "active": true,
+      "color": "#40aeb0"
+    },
+    {
+      "id": "d6da1131-c2e2-48b4-a5ba-8ce879f19a94",
+      "name": "มัทฉะนมชมพู",
+      "price": 49,
+      "active": true,
+      "color": "#c291d4"
+    }
+  ],
+  "toppings": [
+    {
+      "id": "50b43701-5e30-444d-8edd-473417deb4fd",
+      "name": "ไข่มุก",
+      "price": 5,
+      "active": true
+    },
+    {
+      "id": "f1abbb3c-c4dd-4097-9d86-0588f3fdc097",
+      "name": "ครีมชีส",
+      "price": 15,
+      "active": true
+    },
+    {
+      "id": "be8efc94-c729-4e27-8d78-598f50837949",
+      "name": "บุก",
+      "price": 10,
+      "active": true
+    },
+    {
+      "id": "5b0d4b6e-e82c-4a90-a486-ea57bd7d25b8",
+      "name": "ซอสสตอเบอรี่",
+      "price": 10,
+      "active": true
+    }
+  ],
+  "sales": [
+    {
+      "date": "2026-06-08",
+      "items": [
+        {
+          "menuId": "903f1325-e14a-4d72-be60-d36ef11236ff",
+          "cupsSold": 1,
+          "unitPriceAtSale": 25
+        },
+        {
+          "menuId": "ad5e3339-eea1-4507-b665-1b6ec36f79a5",
+          "cupsSold": 1,
+          "unitPriceAtSale": 25
+        },
+        {
+          "menuId": "e4d32b9f-3fba-43fa-bec5-910cd23475ec",
+          "cupsSold": 1,
+          "unitPriceAtSale": 59
+        }
+      ],
+      "toppings": [
+        {
+          "menuId": "f1abbb3c-c4dd-4097-9d86-0588f3fdc097",
+          "cupsSold": 1,
+          "unitPriceAtSale": 15
+        },
+        {
+          "menuId": "be8efc94-c729-4e27-8d78-598f50837949",
+          "cupsSold": 1,
+          "unitPriceAtSale": 10
+        }
+      ]
+    }
+  ],
+  "payment": {
+    "shopName": "gote",
+    "promptpayId": "0849755392"
+  },
+  "currentOrder": {
+    "items": [],
+    "toppings": []
+  },
+  "orders": [
+    {
+      "orderNumber": "ORD-20260608-003",
+      "createdAt": "2026-06-08T02:42:49.533Z",
+      "total": 69,
+      "items": [
+        {
+          "id": "e4d32b9f-3fba-43fa-bec5-910cd23475ec",
+          "name": "มัทฉะสตอเบอรี่",
+          "unitPrice": 59,
+          "qty": 1,
+          "type": "menu"
+        }
+      ],
+      "toppings": [
+        {
+          "id": "be8efc94-c729-4e27-8d78-598f50837949",
+          "name": "บุก",
+          "unitPrice": 10,
+          "qty": 1,
+          "type": "topping"
+        }
+      ]
+    },
+    {
+      "orderNumber": "ORD-20260608-002",
+      "createdAt": "2026-06-08T02:41:51.186Z",
+      "total": 50,
+      "items": [
+        {
+          "id": "903f1325-e14a-4d72-be60-d36ef11236ff",
+          "name": "ชาเขียว",
+          "unitPrice": 25,
+          "qty": 1,
+          "type": "menu"
+        },
+        {
+          "id": "ad5e3339-eea1-4507-b665-1b6ec36f79a5",
+          "name": "ชาไต้หวัน",
+          "unitPrice": 25,
+          "qty": 1,
+          "type": "menu"
+        }
+      ],
+      "toppings": []
+    },
+    {
+      "orderNumber": "ORD-20260608-001",
+      "createdAt": "2026-06-08T02:39:39.480Z",
+      "total": 15,
+      "items": [],
+      "toppings": [
+        {
+          "id": "f1abbb3c-c4dd-4097-9d86-0588f3fdc097",
+          "name": "ครีมชีส",
+          "unitPrice": 15,
+          "qty": 1,
+          "type": "topping"
+        }
+      ]
+    }
+  ],
+  "lastOrder": {
+    "orderNumber": "ORD-20260608-003",
+    "createdAt": "2026-06-08T02:42:49.533Z",
+    "total": 69,
+    "items": [
+      {
+        "id": "e4d32b9f-3fba-43fa-bec5-910cd23475ec",
+        "name": "มัทฉะสตอเบอรี่",
+        "unitPrice": 59,
+        "qty": 1,
+        "type": "menu"
+      }
+    ],
+    "toppings": [
+      {
+        "id": "be8efc94-c729-4e27-8d78-598f50837949",
+        "name": "บุก",
+        "unitPrice": 10,
+        "qty": 1,
+        "type": "topping"
+      }
+    ]
+  }
+}

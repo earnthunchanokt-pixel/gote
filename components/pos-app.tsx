@@ -32,6 +32,7 @@ const tabs: Array<{ key: TabKey; label: string }> = [
 export function PosApp() {
   const [state, setState] = useState<PosState>(createDefaultState);
   const [activeTab, setActiveTab] = useState<TabKey>("order");
+  const [isMobileCartOpen, setIsMobileCartOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getToday());
   const [menuDraft, setMenuDraft] = useState({ name: "", price: "", color: "#d3a992" });
   const [toppingDraft, setToppingDraft] = useState({ name: "", price: "" });
@@ -202,6 +203,7 @@ export function PosApp() {
 
     setSelectedDate(getToday());
     setActiveTab("summary");
+    setIsMobileCartOpen(false);
     showToast("ปิดบิลเรียบร้อย");
   }
 
@@ -287,7 +289,7 @@ export function PosApp() {
     "glass-panel rounded-[28px] border border-white/40 bg-[var(--surface)] p-4 sm:p-5 fade-up";
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden pb-32">
+    <main className="relative min-h-screen overflow-x-hidden pb-44 sm:pb-32">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.45),transparent_60%)]" />
 
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4 sm:px-6 lg:px-8 lg:py-6">
@@ -310,13 +312,13 @@ export function PosApp() {
           </div>
         </section>
 
-        <nav className="fade-up flex gap-2 overflow-x-auto pb-1">
+        <nav className="fade-up grid grid-cols-2 gap-2 pb-1 sm:flex sm:overflow-x-auto">
           {tabs.map((tab) => (
             <button
               key={tab.key}
               type="button"
               onClick={() => setActiveTab(tab.key)}
-              className={`rounded-full px-4 py-3 text-sm font-bold whitespace-nowrap transition ${
+              className={`min-h-13 rounded-[22px] px-4 py-3 text-sm font-bold whitespace-nowrap transition sm:rounded-full ${
                 activeTab === tab.key
                   ? "bg-[#2f241f] text-white shadow-lg"
                   : "glass-panel bg-white/60 text-[var(--text)] hover:bg-white"
@@ -326,6 +328,23 @@ export function PosApp() {
             </button>
           ))}
         </nav>
+
+        <section className="glass-panel fade-up rounded-[26px] p-4 sm:hidden">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">บิลตอนนี้</p>
+              <p className="mt-1 text-2xl font-black text-[var(--text)]">{formatCurrency(currentTotals.total)}</p>
+              <p className="mt-1 text-sm text-[var(--muted)]">{formatNumber(currentTotals.units)} รายการในตะกร้า</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsMobileCartOpen(true)}
+              className="rounded-[20px] bg-[#2f241f] px-4 py-3 text-sm font-black text-white shadow-lg"
+            >
+              ดูบิล
+            </button>
+          </div>
+        </section>
 
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.65fr)_minmax(320px,0.95fr)]">
           <div className="space-y-4">
@@ -544,102 +563,97 @@ export function PosApp() {
             ) : null}
           </div>
 
-          <aside className="space-y-4">
+          <aside className="hidden space-y-4 lg:block">
             <section className={`${surfaceClass} sticky top-4`}>
-              <SectionHeading
-                eyebrow="บิลปัจจุบัน"
-                title={state.lastOrder ? `บิลล่าสุด ${state.lastOrder.orderNumber}` : "ยังไม่มีบิลล่าสุด"}
-                description="รายการที่เพิ่มจะขึ้นทันทีตรงนี้ พร้อมปุ่มเพิ่มลดจำนวนแบบกดง่าย"
+              <OrderPanel
+                currentTotals={currentTotals}
+                lastOrderTitle={state.lastOrder ? `บิลล่าสุด ${state.lastOrder.orderNumber}` : "ยังไม่มีบิลล่าสุด"}
+                orderLines={orderLines}
+                onCheckout={checkoutOrder}
+                onClear={clearOrder}
+                onUpdateQty={updateOrderQty}
               />
-
-              <div className="mt-4 space-y-3">
-                {orderLines.length === 0 ? (
-                  <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-white/70 px-4 py-8 text-center text-sm text-[var(--muted)]">
-                    ยังไม่มีรายการในบิล แตะเมนูทางซ้ายเพื่อเริ่มขาย
-                  </div>
-                ) : (
-                  orderLines.map((item) => (
-                    <article key={`${item.type}-${item.id}`} className="rounded-[22px] border border-[var(--line)] bg-white/85 p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div>
-                          <p className="text-sm font-black text-[var(--text)]">{item.name}</p>
-                          <p className="mt-1 text-xs text-[var(--muted)]">
-                            {item.label} • {formatCurrency(item.unitPrice)} / รายการ
-                          </p>
-                        </div>
-                        <p className="text-sm font-black text-[var(--text)]">{formatCurrency(item.unitPrice * item.qty)}</p>
-                      </div>
-                      <div className="mt-3 flex items-center justify-between">
-                        <div className="inline-flex items-center gap-3 rounded-full bg-[#f5ebde] px-2 py-2">
-                          <button
-                            type="button"
-                            onClick={() => updateOrderQty(item.type, item.id, -1)}
-                            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-lg font-black text-[var(--text)]"
-                          >
-                            -
-                          </button>
-                          <span className="min-w-6 text-center text-sm font-bold">{formatNumber(item.qty)}</span>
-                          <button
-                            type="button"
-                            onClick={() => updateOrderQty(item.type, item.id, 1)}
-                            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-lg font-black text-[var(--text)]"
-                          >
-                            +
-                          </button>
-                        </div>
-                        <span className="rounded-full bg-[#eef7ef] px-3 py-2 text-xs font-bold text-[var(--mint-deep)]">{item.label}</span>
-                      </div>
-                    </article>
-                  ))
-                )}
-              </div>
-
-              <div className="mt-5 rounded-[24px] bg-[#2f241f] p-4 text-white">
-                <div className="flex items-center justify-between text-sm text-white/70">
-                  <span>รวมทั้งหมด</span>
-                  <span>{formatNumber(currentTotals.units)} รายการ</span>
-                </div>
-                <div className="mt-2 text-3xl font-black">{formatCurrency(currentTotals.total)}</div>
-                <div className="mt-4 flex gap-3">
-                  <button
-                    type="button"
-                    onClick={clearOrder}
-                    className="flex-1 rounded-2xl bg-white/14 px-4 py-3 text-sm font-bold text-white"
-                  >
-                    ล้างบิล
-                  </button>
-                  <button
-                    type="button"
-                    onClick={checkoutOrder}
-                    className="flex-1 rounded-2xl bg-[#f7ba67] px-4 py-3 text-sm font-black text-[#3f2518]"
-                  >
-                    ปิดบิล
-                  </button>
-                </div>
-              </div>
             </section>
           </aside>
         </div>
       </div>
 
-      <div className="fixed inset-x-0 bottom-4 z-40 px-4 sm:hidden">
-        <div className="glass-panel flex items-center justify-between rounded-full px-4 py-3">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">ยอดปัจจุบัน</p>
-            <p className="text-lg font-black">{formatCurrency(currentTotals.total)}</p>
+      {isMobileCartOpen ? (
+        <div className="fixed inset-0 z-50 bg-[#2f241f]/40 px-3 py-3 sm:hidden">
+          <div className="flex h-full flex-col justify-end">
+            <div className="glass-panel max-h-[85vh] overflow-hidden rounded-[30px] bg-[#fffdf8]">
+              <div className="flex items-center justify-between border-b border-[var(--line)] px-4 py-4">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-[var(--muted)]">Current Bill</p>
+                  <h3 className="mt-1 text-xl font-black text-[var(--text)]">ดูบิลและปิดการขาย</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileCartOpen(false)}
+                  className="flex h-10 w-10 items-center justify-center rounded-full bg-[#f3eadf] text-lg font-black text-[var(--text)]"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="max-h-[calc(85vh-88px)] overflow-y-auto p-4">
+                <OrderPanel
+                  currentTotals={currentTotals}
+                  lastOrderTitle={state.lastOrder ? `บิลล่าสุด ${state.lastOrder.orderNumber}` : "ยังไม่มีบิลล่าสุด"}
+                  orderLines={orderLines}
+                  onCheckout={checkoutOrder}
+                  onClear={clearOrder}
+                  onUpdateQty={updateOrderQty}
+                />
+              </div>
+            </div>
           </div>
+        </div>
+      ) : null}
+
+      <div className="fixed inset-x-0 bottom-4 z-40 px-4 sm:hidden">
+        <div className="glass-panel flex items-center gap-3 rounded-[28px] px-3 py-3">
+          <button
+            type="button"
+            onClick={() => setIsMobileCartOpen(true)}
+            className="flex min-w-0 flex-1 items-center justify-between rounded-[20px] bg-white px-4 py-3 text-left"
+          >
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[var(--muted)]">ตะกร้าปัจจุบัน</p>
+              <p className="truncate text-base font-black text-[var(--text)]">{formatCurrency(currentTotals.total)}</p>
+            </div>
+            <span className="rounded-full bg-[#f3eadf] px-3 py-2 text-xs font-black text-[var(--text)]">
+              {formatNumber(currentTotals.units)}
+            </span>
+          </button>
           <button
             type="button"
             onClick={checkoutOrder}
-            className="rounded-full bg-[#2f241f] px-5 py-3 text-sm font-black text-white"
+            className="shrink-0 rounded-[20px] bg-[#2f241f] px-4 py-3 text-sm font-black text-white"
           >
-            ปิดบิลทันที
+            ปิดบิล
           </button>
         </div>
       </div>
 
+      <div className="fixed inset-x-0 bottom-24 z-30 px-4 sm:hidden">
+        <div className="glass-panel grid grid-cols-4 gap-2 rounded-[24px] p-2">
+          {tabs.map((tab) => (
+            <button
+              key={`mobile-${tab.key}`}
+              type="button"
+              onClick={() => setActiveTab(tab.key)}
+              className={`rounded-[18px] px-2 py-3 text-center text-[11px] font-bold leading-tight transition ${
+                activeTab === tab.key ? "bg-[#2f241f] text-white" : "bg-white/70 text-[var(--text)]"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div
-        className={`pointer-events-none fixed bottom-24 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#2f241f] px-4 py-3 text-sm font-bold text-white shadow-xl transition ${
+        className={`pointer-events-none fixed bottom-40 left-1/2 z-50 -translate-x-1/2 rounded-full bg-[#2f241f] px-4 py-3 text-sm font-bold text-white shadow-xl transition sm:bottom-24 ${
           toast.show ? "translate-y-0 opacity-100" : "translate-y-3 opacity-0"
         }`}
       >
@@ -656,6 +670,98 @@ function SectionHeading(props: { eyebrow: string; title: string; description: st
       <h2 className="mt-2 text-2xl font-black leading-tight text-[var(--text)]">{props.title}</h2>
       <p className="mt-2 max-w-2xl text-sm leading-6 text-[var(--muted)]">{props.description}</p>
     </div>
+  );
+}
+
+function OrderPanel(props: {
+  currentTotals: { units: number; total: number };
+  lastOrderTitle: string;
+  orderLines: Array<{
+    id: string;
+    name: string;
+    unitPrice: number;
+    qty: number;
+    type: "menu" | "topping";
+    label: string;
+  }>;
+  onCheckout: () => void;
+  onClear: () => void;
+  onUpdateQty: (type: "menu" | "topping", id: string, delta: number) => void;
+}) {
+  return (
+    <>
+      <SectionHeading
+        eyebrow="บิลปัจจุบัน"
+        title={props.lastOrderTitle}
+        description="รายการที่เพิ่มจะขึ้นทันทีตรงนี้ พร้อมปุ่มเพิ่มลดจำนวนแบบกดง่าย"
+      />
+
+      <div className="mt-4 space-y-3">
+        {props.orderLines.length === 0 ? (
+          <div className="rounded-[22px] border border-dashed border-[var(--line)] bg-white/70 px-4 py-8 text-center text-sm text-[var(--muted)]">
+            ยังไม่มีรายการในบิล แตะเมนูเพื่อเริ่มขาย
+          </div>
+        ) : (
+          props.orderLines.map((item) => (
+            <article key={`${item.type}-${item.id}`} className="rounded-[22px] border border-[var(--line)] bg-white/85 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-black text-[var(--text)]">{item.name}</p>
+                  <p className="mt-1 text-xs text-[var(--muted)]">
+                    {item.label} • {formatCurrency(item.unitPrice)} / รายการ
+                  </p>
+                </div>
+                <p className="text-sm font-black text-[var(--text)]">{formatCurrency(item.unitPrice * item.qty)}</p>
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <div className="inline-flex items-center gap-3 rounded-full bg-[#f5ebde] px-2 py-2">
+                  <button
+                    type="button"
+                    onClick={() => props.onUpdateQty(item.type, item.id, -1)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg font-black text-[var(--text)]"
+                  >
+                    -
+                  </button>
+                  <span className="min-w-6 text-center text-sm font-bold">{formatNumber(item.qty)}</span>
+                  <button
+                    type="button"
+                    onClick={() => props.onUpdateQty(item.type, item.id, 1)}
+                    className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg font-black text-[var(--text)]"
+                  >
+                    +
+                  </button>
+                </div>
+                <span className="rounded-full bg-[#eef7ef] px-3 py-2 text-xs font-bold text-[var(--mint-deep)]">{item.label}</span>
+              </div>
+            </article>
+          ))
+        )}
+      </div>
+
+      <div className="mt-5 rounded-[24px] bg-[#2f241f] p-4 text-white">
+        <div className="flex items-center justify-between text-sm text-white/70">
+          <span>รวมทั้งหมด</span>
+          <span>{formatNumber(props.currentTotals.units)} รายการ</span>
+        </div>
+        <div className="mt-2 text-3xl font-black">{formatCurrency(props.currentTotals.total)}</div>
+        <div className="mt-4 flex gap-3">
+          <button
+            type="button"
+            onClick={props.onClear}
+            className="flex-1 rounded-2xl bg-white/14 px-4 py-3 text-sm font-bold text-white"
+          >
+            ล้างบิล
+          </button>
+          <button
+            type="button"
+            onClick={props.onCheckout}
+            className="flex-1 rounded-2xl bg-[#f7ba67] px-4 py-3 text-sm font-black text-[#3f2518]"
+          >
+            ปิดบิล
+          </button>
+        </div>
+      </div>
+    </>
   );
 }
 

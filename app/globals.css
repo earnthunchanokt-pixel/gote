@@ -1,26 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #fbfcfe;
-  --shell: linear-gradient(180deg, #ffffff 0, rgba(249, 251, 253, 0.98) 260px), #fbfcfe;
-  --surface: #ffffff;
-  --surface-soft: #f7f9fc;
-  --line: #dfe7ef;
-  --line-soft: #e8edf3;
-  --table-line: #edf1f2;
-  --text: #07142b;
-  --text-body: #13213a;
-  --muted: #52627a;
-  --subtle: #94a3b8;
-  --sky: #0284c7;
-  --sky-soft: #f0f9ff;
-  --emerald-soft: #ecfdf5;
-  --emerald-deep: #047857;
-  --amber-soft: #fffbeb;
-  --amber-deep: #b45309;
-  --rose-soft: #fff1f2;
-  --rose-deep: #be123c;
-  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04);
+  --bg: #fff9ff;
+  --shell:
+    radial-gradient(circle at top left, rgba(255, 203, 225, 0.9) 0, rgba(255, 203, 225, 0) 28%),
+    radial-gradient(circle at top right, rgba(255, 233, 184, 0.75) 0, rgba(255, 233, 184, 0) 30%),
+    radial-gradient(circle at 20% 80%, rgba(196, 238, 255, 0.88) 0, rgba(196, 238, 255, 0) 26%),
+    radial-gradient(circle at 80% 78%, rgba(212, 251, 214, 0.85) 0, rgba(212, 251, 214, 0) 28%),
+    radial-gradient(circle at 50% 45%, rgba(228, 217, 255, 0.62) 0, rgba(228, 217, 255, 0) 34%),
+    linear-gradient(180deg, #fffdfd 0%, #fff7fb 34%, #f7fbff 68%, #fffef8 100%);
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-soft: rgba(255, 255, 255, 0.56);
+  --line: rgba(218, 199, 233, 0.72);
+  --line-soft: rgba(234, 219, 244, 0.68);
+  --table-line: rgba(234, 228, 243, 0.82);
+  --text: #37254f;
+  --text-body: #503667;
+  --muted: #806796;
+  --subtle: #b09fc2;
+  --sky: #8b5cf6;
+  --sky-soft: #f5edff;
+  --emerald-soft: #eefcf2;
+  --emerald-deep: #2f8a67;
+  --amber-soft: #fff7df;
+  --amber-deep: #b7791f;
+  --rose-soft: #fff0f7;
+  --rose-deep: #c25183;
+  --shadow-soft: 0 18px 45px rgba(157, 124, 188, 0.14);
 }
 
 * {
@@ -38,6 +44,7 @@ body {
   font-family: "Sarabun", "Noto Sans Thai", ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "tnum";
   background: var(--shell);
+  background-attachment: fixed;
 }
 
 button,
@@ -48,14 +55,31 @@ textarea {
 }
 
 ::selection {
-  background: rgba(242, 138, 61, 0.25);
+  background: rgba(236, 156, 210, 0.34);
 }
 
 .glass-panel {
   background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(16px) saturate(135%);
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(120deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
+    repeating-linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 0.18) 0,
+      rgba(255, 255, 255, 0.18) 10px,
+      rgba(255, 255, 255, 0.06) 10px,
+      rgba(255, 255, 255, 0.06) 20px
+    );
+  opacity: 0.45;
 }
 
 .fade-up {

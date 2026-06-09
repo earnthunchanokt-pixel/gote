@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent, type FormEvent } from "react";
 import {
   STATE_API_ENDPOINT,
   STORAGE_KEY,
@@ -43,6 +43,7 @@ export function PosApp() {
   const [serverReady, setServerReady] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, message: "" });
   const persistTimeoutRef = useRef<number | null>(null);
+  const slipInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -230,7 +231,47 @@ export function PosApp() {
   }
 
   function clearOrder() {
-    setState((current) => ({ ...current, currentOrder: createEmptyOrder() }));
+    setState((current) => ({ ...current, currentOrder: createEmptyOrder(), currentPaymentSlipImage: null }));
+  }
+
+  function onSelectSlip() {
+    slipInputRef.current?.click();
+  }
+
+  function removeSlip() {
+    setState((current) => ({ ...current, currentPaymentSlipImage: null }));
+    if (slipInputRef.current) {
+      slipInputRef.current.value = "";
+    }
+    showToast("ลบสลิปแล้ว");
+  }
+
+  function handleSlipFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      showToast("กรุณาเลือกรูปสลิป");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === "string" ? reader.result : null;
+      if (!result) {
+        showToast("อ่านไฟล์สลิปไม่สำเร็จ");
+        return;
+      }
+
+      setState((current) => ({ ...current, currentPaymentSlipImage: result }));
+      showToast("แนบสลิปแล้ว");
+    };
+    reader.onerror = () => {
+      showToast("อัปโหลดสลิปไม่สำเร็จ");
+    };
+    reader.readAsDataURL(file);
   }
 
   function checkoutOrder() {
@@ -248,6 +289,7 @@ export function PosApp() {
         total: currentTotals.total,
         items: structuredClone(current.currentOrder.items),
         toppings: structuredClone(current.currentOrder.toppings),
+        paymentSlipImage: current.currentPaymentSlipImage,
       };
 
       const nextSales = mergeOrderIntoSales(current.sales, date, current.currentOrder);
@@ -258,6 +300,7 @@ export function PosApp() {
         orders: [orderRecord, ...current.orders],
         lastOrder: orderRecord,
         currentOrder: createEmptyOrder(),
+        currentPaymentSlipImage: null,
       };
     });
 
@@ -452,6 +495,136 @@ export function PosApp() {
                     ))}
                   </div>
                 </section>
+
+                <section className={surfaceClass}>
+                  <SectionHeading
+                    eyebrow="รับเงินหน้าร้าน"
+                    title="QR และยอดที่ลูกค้าต้องโอน"
+                    description="เปิดให้ลูกค้าสแกนได้ทันทีจากหน้าขาย พร้อมดูยอดบิลปัจจุบันและสลิปล่าสุดในจุดเดียว"
+                  />
+                  <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+                    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
+                      <div className="grid gap-3 sm:grid-cols-3">
+                        <div className="rounded-md bg-[var(--surface-soft)] p-4">
+                          <p className="text-[12px] font-semibold text-[var(--muted)]">ชื่อร้าน</p>
+                          <p className="mt-2 text-[18px] font-extrabold text-[var(--text)]">{state.payment.shopName || "gote"}</p>
+                        </div>
+                        <div className="rounded-md bg-[var(--surface-soft)] p-4">
+                          <p className="text-[12px] font-semibold text-[var(--muted)]">ยอดบิลปัจจุบัน</p>
+                          <p className="mt-2 text-[18px] font-extrabold text-[var(--text)]">{formatCurrency(currentTotals.total)}</p>
+                        </div>
+                        <div className="rounded-md bg-[var(--surface-soft)] p-4">
+                          <p className="text-[12px] font-semibold text-[var(--muted)]">พร้อมเพย์</p>
+                          <p className="mt-2 text-[16px] font-extrabold text-[var(--text)]">{state.payment.promptpayId || "ยังไม่ได้ตั้งค่า"}</p>
+                        </div>
+                      </div>
+                      <div className="mt-4 rounded-md bg-[var(--surface-soft)] px-4 py-3 text-[13px] text-[var(--text-body)]">
+                        ใช้ QR นี้ให้ลูกค้าสแกนจ่ายได้เลย จากนั้นแนบสลิปด้านล่างก่อนกดปิดบิล
+                      </div>
+                    </div>
+
+                    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
+                      <p className="text-[12px] font-semibold text-[var(--muted)]">QR รับเงิน</p>
+                      <h3 className="mt-2 text-[24px] font-extrabold text-[var(--text)]">
+                        {formatCurrency(currentTotals.total || (state.lastOrder?.total ?? 0))}
+                      </h3>
+                      <p className="mt-1 text-[13px] text-[var(--muted)]">
+                        {state.payment.shopName || "gote"} • {state.lastOrder?.orderNumber ?? "บิลปัจจุบัน"}
+                      </p>
+                      <div className="mt-4 overflow-hidden rounded-md border border-[var(--table-line)] bg-white p-3">
+                        <Image
+                          src="/assets/customer-payment-qr.jpg"
+                          alt="Customer payment QR"
+                          width={600}
+                          height={600}
+                          className="h-auto w-full rounded-md object-cover"
+                          priority
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </section>
+
+                <section className={surfaceClass}>
+                  <SectionHeading
+                    eyebrow="สลิปพร้อมเพย์"
+                    title="แนบสลิปในหน้าขายได้ทันที"
+                    description="เมื่อโอนเสร็จ สามารถอัปโหลดรูปสลิป ตรวจสอบก่อนปิดบิล และเปิดดูสลิปล่าสุดได้เลย"
+                  />
+                  <div className="mt-4 grid gap-4 xl:grid-cols-2">
+                    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
+                      <input
+                        ref={slipInputRef}
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleSlipFileChange}
+                      />
+                      {state.currentPaymentSlipImage ? (
+                        <div className="space-y-3">
+                          <div className="overflow-hidden rounded-md border border-[var(--table-line)] bg-white p-2">
+                            <Image
+                              src={state.currentPaymentSlipImage}
+                              alt="Slip preview"
+                              width={900}
+                              height={1200}
+                              className="h-auto w-full rounded-md object-contain"
+                              unoptimized
+                            />
+                          </div>
+                          <div className="flex gap-3">
+                            <button
+                              type="button"
+                              onClick={onSelectSlip}
+                              className="rounded-md border border-[var(--line)] bg-white px-4 py-3 text-[13px] font-semibold text-[var(--text-body)]"
+                            >
+                              เปลี่ยนสลิป
+                            </button>
+                            <button
+                              type="button"
+                              onClick={removeSlip}
+                              className="rounded-md bg-rose-50 px-4 py-3 text-[13px] font-semibold text-rose-700"
+                            >
+                              ลบสลิป
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="rounded-md border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-8 text-center">
+                          <p className="text-[14px] font-semibold text-[var(--text-body)]">ยังไม่มีสลิปที่แนบไว้</p>
+                          <p className="mt-1 text-[12px] text-[var(--muted)]">รองรับการอัปโหลดรูปสลิปจากแกลเลอรีหรือกล้องมือถือ</p>
+                          <button
+                            type="button"
+                            onClick={onSelectSlip}
+                            className="mt-4 rounded-md bg-sky-600 px-4 py-3 text-[13px] font-semibold text-white"
+                          >
+                            อัปโหลดสลิป
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
+                      <p className="text-[12px] font-semibold text-[var(--muted)]">สลิปล่าสุดที่ปิดบิลแล้ว</p>
+                      {state.lastOrder?.paymentSlipImage ? (
+                        <div className="mt-3 overflow-hidden rounded-md border border-[var(--table-line)] bg-white p-2">
+                          <Image
+                            src={state.lastOrder.paymentSlipImage}
+                            alt="Latest payment slip"
+                            width={900}
+                            height={1200}
+                            className="h-auto w-full rounded-md object-contain"
+                            unoptimized
+                          />
+                        </div>
+                      ) : (
+                        <div className="mt-3 rounded-md border border-dashed border-[var(--line)] bg-[var(--surface-soft)] px-4 py-8 text-center text-[13px] text-[var(--muted)]">
+                          ยังไม่มีสลิปจากบิลล่าสุด
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </section>
               </>
             ) : null}
 
@@ -570,55 +743,30 @@ export function PosApp() {
                 <SectionHeading
                   eyebrow="การรับเงิน"
                   title="ตั้งค่าร้านและพร้อมเพย์"
-                  description="ข้อมูลนี้จะใช้แสดงข้าง QR เพื่อให้ลูกค้าเช็กยอดได้ง่าย"
+                  description="หน้านี้ใช้เก็บชื่อร้านและเลขพร้อมเพย์สำหรับนำไปแสดงในหน้าขายหน้าร้าน"
                 />
 
-                <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
-                  <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
-                    <div className="grid gap-3">
-                      <input
-                        value={shopName}
-                        onChange={(event) => setShopName(event.target.value)}
-                        placeholder="ชื่อร้าน"
-                        className="rounded-md border border-[var(--line)] px-4 py-3 text-[14px] outline-none"
-                      />
-                      <input
-                        value={promptpayId}
-                        onChange={(event) => setPromptpayId(event.target.value)}
-                        placeholder="เบอร์พร้อมเพย์หรือเลขบัญชี"
-                        className="rounded-md border border-[var(--line)] px-4 py-3 text-[14px] outline-none"
-                      />
-                      <button
-                        type="button"
-                        onClick={savePaymentSettings}
-                        className="rounded-md bg-sky-600 px-4 py-3 text-[13px] font-semibold text-white"
-                      >
-                        บันทึกการตั้งค่า
-                      </button>
-                    </div>
-                  </div>
-
-                  <div className="rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4 shadow-[var(--shadow-soft)]">
-                    <p className="text-[12px] font-semibold text-[var(--muted)]">ข้อมูลรับเงิน</p>
-                    <h3 className="mt-2 text-[24px] font-extrabold text-[var(--text)]">
-                      {formatCurrency(state.lastOrder?.total ?? currentTotals.total)}
-                    </h3>
-                    <p className="mt-1 text-[13px] text-[var(--muted)]">
-                      {state.payment.shopName || "gote"} • {state.lastOrder?.orderNumber ?? "บิลยังไม่ถูกปิด"}
-                    </p>
-                    <div className="mt-4 overflow-hidden rounded-md border border-[var(--table-line)] bg-white p-3">
-                      <Image
-                        src="/assets/customer-payment-qr.jpg"
-                        alt="Customer payment QR"
-                        width={600}
-                        height={600}
-                        className="h-auto w-full rounded-md object-cover"
-                        priority
-                      />
-                    </div>
-                    <div className="mt-4 rounded-md bg-[var(--surface-soft)] px-4 py-3 text-[13px] text-[var(--text-body)]">
-                      ใช้ QR นี้สำหรับรับเงินจากลูกค้า โดยยอดอ้างอิงจากบิลล่าสุดหรือยอดที่กำลังจัดอยู่
-                    </div>
+                <div className="mt-4 max-w-2xl rounded-lg border border-[var(--line)] bg-[var(--surface)] p-4">
+                  <div className="grid gap-3">
+                    <input
+                      value={shopName}
+                      onChange={(event) => setShopName(event.target.value)}
+                      placeholder="ชื่อร้าน"
+                      className="rounded-md border border-[var(--line)] px-4 py-3 text-[14px] outline-none"
+                    />
+                    <input
+                      value={promptpayId}
+                      onChange={(event) => setPromptpayId(event.target.value)}
+                      placeholder="เบอร์พร้อมเพย์หรือเลขบัญชี"
+                      className="rounded-md border border-[var(--line)] px-4 py-3 text-[14px] outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={savePaymentSettings}
+                      className="rounded-md bg-sky-600 px-4 py-3 text-[13px] font-semibold text-white"
+                    >
+                      บันทึกการตั้งค่า
+                    </button>
                   </div>
                 </div>
               </section>

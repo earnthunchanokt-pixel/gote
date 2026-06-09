@@ -51,6 +51,7 @@ export type OrderRecord = {
   total: number;
   items: OrderLine[];
   toppings: OrderLine[];
+  paymentSlipImage: string | null;
 };
 
 export type PosState = {
@@ -59,8 +60,19 @@ export type PosState = {
   sales: DailySale[];
   payment: PaymentSettings;
   currentOrder: CurrentOrder;
+  currentPaymentSlipImage: string | null;
   orders: OrderRecord[];
   lastOrder: OrderRecord | null;
+};
+
+type SeedOrderRecord = Omit<OrderRecord, "paymentSlipImage"> & {
+  paymentSlipImage?: string | null;
+};
+
+type SeedPosState = Omit<PosState, "orders" | "lastOrder" | "currentPaymentSlipImage"> & {
+  orders?: SeedOrderRecord[];
+  lastOrder?: SeedOrderRecord | null;
+  currentPaymentSlipImage?: string | null;
 };
 
 export const STORAGE_KEY = "gote-pos-next-v1";
@@ -83,14 +95,17 @@ export function createEmptyOrder(): CurrentOrder {
 }
 
 export function createDefaultState(): PosState {
+  const seed = seedState as unknown as SeedPosState;
+
   return {
     menus: structuredClone(defaultMenus),
     toppings: structuredClone(defaultToppings),
-    sales: structuredClone((seedState.sales ?? []) as DailySale[]),
+    sales: structuredClone((seed.sales ?? []) as DailySale[]),
     payment: { ...defaultPayment },
-    currentOrder: structuredClone((seedState.currentOrder ?? createEmptyOrder()) as CurrentOrder),
-    orders: structuredClone((seedState.orders ?? []) as OrderRecord[]),
-    lastOrder: structuredClone((seedState.lastOrder ?? null) as OrderRecord | null),
+    currentOrder: structuredClone((seed.currentOrder ?? createEmptyOrder()) as CurrentOrder),
+    currentPaymentSlipImage: seed.currentPaymentSlipImage ?? null,
+    orders: structuredClone((seed.orders ?? []).map((order) => ({ ...order, paymentSlipImage: order.paymentSlipImage ?? null }))),
+    lastOrder: seed.lastOrder ? { ...seed.lastOrder, paymentSlipImage: seed.lastOrder.paymentSlipImage ?? null } : null,
   };
 }
 
@@ -154,8 +169,19 @@ export function normalizeState(input: unknown): PosState {
       items: Array.isArray(raw.currentOrder?.items) ? raw.currentOrder.items : [],
       toppings: Array.isArray(raw.currentOrder?.toppings) ? raw.currentOrder.toppings : [],
     },
-    orders: Array.isArray(raw.orders) ? raw.orders : [],
-    lastOrder: raw.lastOrder ?? null,
+    currentPaymentSlipImage: typeof raw.currentPaymentSlipImage === "string" ? raw.currentPaymentSlipImage : null,
+    orders: Array.isArray(raw.orders)
+      ? raw.orders.map((order) => ({
+          ...order,
+          paymentSlipImage: typeof order.paymentSlipImage === "string" ? order.paymentSlipImage : null,
+        }))
+      : [],
+    lastOrder: raw.lastOrder
+      ? {
+          ...raw.lastOrder,
+          paymentSlipImage: typeof raw.lastOrder.paymentSlipImage === "string" ? raw.lastOrder.paymentSlipImage : null,
+        }
+      : null,
   };
 }
 

@@ -64,6 +64,7 @@ export type PosState = {
 };
 
 export const STORAGE_KEY = "gote-pos-next-v1";
+export const STATE_API_ENDPOINT = "/api/state";
 
 export const defaultMenus: MenuItem[] = (seedState.menus as MenuItem[]).map((menu) => ({
   ...menu,

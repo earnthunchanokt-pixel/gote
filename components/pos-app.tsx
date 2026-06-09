@@ -42,6 +42,12 @@ export function PosApp() {
   const [hydrated, setHydrated] = useState(false);
   const [serverReady, setServerReady] = useState(false);
   const [toast, setToast] = useState<ToastState>({ show: false, message: "" });
+  const [summaryProtectionEnabled, setSummaryProtectionEnabled] = useState(false);
+  const [summaryUnlocked, setSummaryUnlocked] = useState(false);
+  const [summaryAccessChecked, setSummaryAccessChecked] = useState(false);
+  const [summaryPassword, setSummaryPassword] = useState("");
+  const [summaryError, setSummaryError] = useState("");
+  const [summarySubmitting, setSummarySubmitting] = useState(false);
   const persistTimeoutRef = useRef<number | null>(null);
   const slipInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -128,6 +134,42 @@ export function PosApp() {
   }, [hydrated, serverReady, state]);
 
   useEffect(() => {
+    let ignore = false;
+
+    const loadSummaryAccess = async () => {
+      try {
+        const response = await fetch("/api/auth/summary", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error("Failed to load summary access");
+        }
+
+        const data = (await response.json()) as { enabled?: boolean; unlocked?: boolean };
+        if (ignore) {
+          return;
+        }
+
+        setSummaryProtectionEnabled(Boolean(data.enabled));
+        setSummaryUnlocked(Boolean(data.unlocked));
+      } catch {
+        if (!ignore) {
+          setSummaryProtectionEnabled(false);
+          setSummaryUnlocked(true);
+        }
+      } finally {
+        if (!ignore) {
+          setSummaryAccessChecked(true);
+        }
+      }
+    };
+
+    void loadSummaryAccess();
+
+    return () => {
+      ignore = true;
+    };
+  }, []);
+
+  useEffect(() => {
     if (!toast.show) {
       return;
     }
@@ -185,6 +227,35 @@ export function PosApp() {
 
   function showToast(message: string) {
     setToast({ show: true, message });
+  }
+
+  async function unlockSummary(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSummarySubmitting(true);
+    setSummaryError("");
+
+    try {
+      const response = await fetch("/api/auth/summary", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: summaryPassword }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => null)) as { message?: string } | null;
+        setSummaryError(data?.message ?? "ปลดล็อกสรุปยอดไม่สำเร็จ");
+        setSummarySubmitting(false);
+        return;
+      }
+
+      setSummaryUnlocked(true);
+      setSummaryPassword("");
+      setSummarySubmitting(false);
+      showToast("เปิดสรุปยอดแล้ว");
+    } catch {
+      setSummaryError("เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง");
+      setSummarySubmitting(false);
+    }
   }
 
   function addToOrder(type: "menu" | "topping", id: string) {
@@ -630,34 +701,75 @@ export function PosApp() {
 
             {activeTab === "summary" ? (
               <section className={surfaceClass}>
-                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                  <SectionHeading
-                    eyebrow="สรุปยอดรายวัน"
-                    title="ดูยอดขายแบบอ่านง่าย"
-                    description="เช็กจำนวนแก้ว รายได้เครื่องดื่ม และรายได้ท็อปปิ้งในวันเดียว"
-                  />
-                  <label className="flex flex-col gap-2 text-sm font-semibold text-[var(--muted)]">
-                    วันที่
-                    <input
-                      type="date"
-                      value={selectedDate}
-                      onChange={(event) => setSelectedDate(event.target.value)}
-                      className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-[var(--text)] outline-none"
+                {!summaryAccessChecked ? (
+                  <div className="rounded-lg border border-dashed border-[var(--line)] bg-white/65 px-4 py-12 text-center text-[14px] font-semibold text-[var(--muted)]">
+                    กำลังตรวจสอบสิทธิ์สรุปยอด...
+                  </div>
+                ) : summaryProtectionEnabled && !summaryUnlocked ? (
+                  <div className="mx-auto max-w-2xl rounded-[24px] border border-[var(--line)] bg-white/65 p-5 sm:p-6">
+                    <SectionHeading
+                      eyebrow="สรุปยอดถูกล็อก"
+                      title="ใส่รหัสผ่านเพื่อดูยอดขาย"
+                      description="หน้าอื่นของระบบเข้าใช้งานได้ตามปกติ แต่ยอดขายรวมจะถูกซ่อนไว้จนกว่าจะปลดล็อก"
                     />
-                  </label>
-                </div>
+                    <form onSubmit={unlockSummary} className="mt-5 space-y-4">
+                      <label className="block">
+                        <span className="mb-2 block text-[13px] font-semibold text-[var(--text-body)]">รหัสผ่านสรุปยอด</span>
+                        <input
+                          value={summaryPassword}
+                          onChange={(event) => setSummaryPassword(event.target.value)}
+                          type="password"
+                          autoComplete="current-password"
+                          placeholder="กรอกรหัสผ่าน"
+                          className="w-full rounded-2xl border border-[var(--line)] bg-white px-4 py-4 text-[15px] text-[var(--text)] outline-none transition focus:border-fuchsia-300 focus:ring-4 focus:ring-fuchsia-100"
+                        />
+                      </label>
+                      {summaryError ? (
+                        <div className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 text-[13px] font-semibold text-rose-700">
+                          {summaryError}
+                        </div>
+                      ) : null}
+                      <button
+                        type="submit"
+                        disabled={summarySubmitting}
+                        className="w-full rounded-2xl bg-[linear-gradient(135deg,#f472b6,#a78bfa,#60a5fa)] px-4 py-4 text-[15px] font-bold text-white shadow-[0_18px_45px_rgba(167,139,250,0.28)] transition hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-70"
+                      >
+                        {summarySubmitting ? "กำลังตรวจสอบ..." : "เปิดดูสรุปยอด"}
+                      </button>
+                    </form>
+                  </div>
+                ) : (
+                  <>
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                      <SectionHeading
+                        eyebrow="สรุปยอดรายวัน"
+                        title="ดูยอดขายแบบอ่านง่าย"
+                        description="เช็กจำนวนแก้ว รายได้เครื่องดื่ม และรายได้ท็อปปิ้งในวันเดียว"
+                      />
+                      <label className="flex flex-col gap-2 text-sm font-semibold text-[var(--muted)]">
+                        วันที่
+                        <input
+                          type="date"
+                          value={selectedDate}
+                          onChange={(event) => setSelectedDate(event.target.value)}
+                          className="rounded-2xl border border-[var(--line)] bg-white px-4 py-3 text-[var(--text)] outline-none"
+                        />
+                      </label>
+                    </div>
 
-                <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-                  <SummaryCard label="จำนวนแก้วรวม" value={formatNumber(summaryStats.cups)} />
-                  <SummaryCard label="รายได้เมนู" value={formatCurrency(summaryStats.menuRevenue)} />
-                  <SummaryCard label="รายได้ท็อปปิ้ง" value={formatCurrency(summaryStats.toppingRevenue)} />
-                  <SummaryCard label="รายได้สุทธิ" value={formatCurrency(summaryStats.totalRevenue)} highlight />
-                </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                      <SummaryCard label="จำนวนแก้วรวม" value={formatNumber(summaryStats.cups)} />
+                      <SummaryCard label="รายได้เมนู" value={formatCurrency(summaryStats.menuRevenue)} />
+                      <SummaryCard label="รายได้ท็อปปิ้ง" value={formatCurrency(summaryStats.toppingRevenue)} />
+                      <SummaryCard label="รายได้สุทธิ" value={formatCurrency(summaryStats.totalRevenue)} highlight />
+                    </div>
 
-                <div className="mt-5 grid gap-4 xl:grid-cols-2">
-                  <SalesTable title="เมนูที่ขาย" rows={summaryRows} emptyLabel="ยังไม่มีข้อมูลเมนูในวันที่เลือก" />
-                  <SalesTable title="ท็อปปิ้งที่ขาย" rows={toppingRows} emptyLabel="ยังไม่มีข้อมูลท็อปปิ้งในวันที่เลือก" />
-                </div>
+                    <div className="mt-5 grid gap-4 xl:grid-cols-2">
+                      <SalesTable title="เมนูที่ขาย" rows={summaryRows} emptyLabel="ยังไม่มีข้อมูลเมนูในวันที่เลือก" />
+                      <SalesTable title="ท็อปปิ้งที่ขาย" rows={toppingRows} emptyLabel="ยังไม่มีข้อมูลท็อปปิ้งในวันที่เลือก" />
+                    </div>
+                  </>
+                )}
               </section>
             ) : null}
 

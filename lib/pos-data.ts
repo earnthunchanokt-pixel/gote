@@ -1,4 +1,17 @@
 import seedState from "@/app-state.json";
+import { getBangkokDate, getOrderTotal } from "./order-totals";
+
+export const MENU_CATEGORIES = ["ชา", "นม", "มัทฉะ", "กาแฟ"] as const;
+export type MenuCategory = (typeof MENU_CATEGORIES)[number];
+export const MENU_IMAGE_SIZE = { min: 32, max: 240, initial: 64 } as const;
+
+export type MenuImageCrop = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  aspectRatio: number;
+};
 
 export type MenuItem = {
   id: string;
@@ -6,6 +19,10 @@ export type MenuItem = {
   price: number;
   active: boolean;
   color: string;
+  image?: string | null;
+  imageCrop?: MenuImageCrop | null;
+  imageSize?: number;
+  category?: MenuCategory;
 };
 
 export type ToppingItem = {
@@ -18,6 +35,10 @@ export type ToppingItem = {
 export type PaymentSettings = {
   shopName: string;
   promptpayId: string;
+};
+
+export type InventorySettings = {
+  cupStock: number;
 };
 
 export type OrderLine = {
@@ -59,6 +80,7 @@ export type PosState = {
   toppings: ToppingItem[];
   sales: DailySale[];
   payment: PaymentSettings;
+  inventory: InventorySettings;
   currentOrder: CurrentOrder;
   currentPaymentSlipImage: string | null;
   orders: OrderRecord[];
@@ -77,6 +99,7 @@ type SeedPosState = Omit<PosState, "orders" | "lastOrder" | "currentPaymentSlipI
 
 export const STORAGE_KEY = "gote-pos-next-v1";
 export const STATE_API_ENDPOINT = "/api/state";
+export const MAX_MENU_IMAGE_LENGTH = 96_000;
 
 export const defaultMenus: MenuItem[] = (seedState.menus as MenuItem[]).map((menu) => ({
   ...menu,
@@ -88,6 +111,13 @@ export const defaultToppings: ToppingItem[] = structuredClone(seedState.toppings
 export const defaultPayment: PaymentSettings = {
   shopName: seedState.payment?.shopName || "gote",
   promptpayId: seedState.payment?.promptpayId || "0849755392",
+};
+
+export const defaultInventory: InventorySettings = {
+  cupStock:
+    typeof (seedState as { inventory?: { cupStock?: number } }).inventory?.cupStock === "number"
+      ? Math.max(0, (seedState as { inventory?: { cupStock?: number } }).inventory?.cupStock ?? 0)
+      : 300,
 };
 
 export function createEmptyOrder(): CurrentOrder {
@@ -102,6 +132,7 @@ export function createDefaultState(): PosState {
     toppings: structuredClone(defaultToppings),
     sales: structuredClone((seed.sales ?? []) as DailySale[]),
     payment: { ...defaultPayment },
+    inventory: { ...defaultInventory },
     currentOrder: structuredClone((seed.currentOrder ?? createEmptyOrder()) as CurrentOrder),
     currentPaymentSlipImage: seed.currentPaymentSlipImage ?? null,
     orders: structuredClone((seed.orders ?? []).map((order) => ({ ...order, paymentSlipImage: order.paymentSlipImage ?? null }))),
@@ -110,21 +141,15 @@ export function createDefaultState(): PosState {
 }
 
 export function getToday() {
-  const formatter = new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Asia/Bangkok",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-
-  return formatter.format(new Date());
+  return getBangkokDate(new Date());
 }
 
 export function formatCurrency(amount: number) {
   return new Intl.NumberFormat("th-TH", {
     style: "currency",
     currency: "THB",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2,
   }).format(amount);
 }
 
@@ -135,6 +160,18 @@ export function formatNumber(amount: number) {
 export function normalizeHexColor(color: string, fallback = "#d3a992") {
   const normalized = color.trim();
   return /^#([0-9a-f]{6})$/i.test(normalized) ? normalized : fallback;
+}
+
+function normalizeMenuImageSize(size: unknown) {
+  if (typeof size !== "number" || !Number.isFinite(size)) return MENU_IMAGE_SIZE.initial;
+  return Math.min(MENU_IMAGE_SIZE.max, Math.max(MENU_IMAGE_SIZE.min, Math.round(size)));
+}
+
+function normalizeMenuImageCrop(crop: MenuImageCrop | null | undefined) {
+  if (!crop || ![crop.x, crop.y, crop.width, crop.height, crop.aspectRatio].every(Number.isFinite)) return null;
+  const { x, y, width, height, aspectRatio } = crop;
+  if (x < 0 || y < 0 || width <= 0 || height <= 0 || aspectRatio <= 0 || x + width > 1.000001 || y + height > 1.000001) return null;
+  return { x, y, width, height, aspectRatio };
 }
 
 export function normalizeState(input: unknown): PosState {
@@ -151,6 +188,14 @@ export function normalizeState(input: unknown): PosState {
       ? raw.menus.map((menu, index) => ({
           ...menu,
           color: normalizeHexColor(menu.color, fallback.menus[index % fallback.menus.length]?.color),
+          category: MENU_CATEGORIES.find((category) => category === menu.category),
+          imageSize: normalizeMenuImageSize(menu.imageSize),
+          imageCrop: normalizeMenuImageCrop(menu.imageCrop),
+          image: typeof menu.image === "string" &&
+            menu.image.length <= MAX_MENU_IMAGE_LENGTH &&
+            /^data:image\/jpeg;base64,[A-Za-z0-9+/]+={0,2}$/.test(menu.image)
+            ? menu.image
+            : null,
         }))
       : fallback.menus,
     toppings: Array.isArray(raw.toppings) && raw.toppings.length > 0 ? raw.toppings : fallback.toppings,
@@ -165,6 +210,12 @@ export function normalizeState(input: unknown): PosState {
       shopName: raw.payment?.shopName || fallback.payment.shopName,
       promptpayId: raw.payment?.promptpayId || fallback.payment.promptpayId,
     },
+    inventory: {
+      cupStock:
+        typeof raw.inventory?.cupStock === "number" && Number.isFinite(raw.inventory.cupStock)
+          ? Math.max(0, raw.inventory.cupStock)
+          : fallback.inventory.cupStock,
+    },
     currentOrder: {
       items: Array.isArray(raw.currentOrder?.items) ? raw.currentOrder.items : [],
       toppings: Array.isArray(raw.currentOrder?.toppings) ? raw.currentOrder.toppings : [],
@@ -173,12 +224,14 @@ export function normalizeState(input: unknown): PosState {
     orders: Array.isArray(raw.orders)
       ? raw.orders.map((order) => ({
           ...order,
+          total: getOrderTotal(order),
           paymentSlipImage: typeof order.paymentSlipImage === "string" ? order.paymentSlipImage : null,
         }))
       : [],
     lastOrder: raw.lastOrder
       ? {
           ...raw.lastOrder,
+          total: getOrderTotal(raw.lastOrder),
           paymentSlipImage: typeof raw.lastOrder.paymentSlipImage === "string" ? raw.lastOrder.paymentSlipImage : null,
         }
       : null,

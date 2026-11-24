@@ -23,30 +23,31 @@ export async function ensurePosSchema() {
 
 export async function getPosState() {
   await ensurePosSchema();
-
-  const result = await pool.query("select state_json from pos_state where id = $1 limit 1", [STATE_ROW_ID]);
-  if (result.rowCount && result.rows[0]?.state_json) {
-    return normalizeState(result.rows[0].state_json);
+  const select = "select state_json, updated_at::text as revision from pos_state where id = $1";
+  let result = await pool.query(select, [STATE_ROW_ID]);
+  if (result.rowCount === 0) {
+    await pool.query(
+      "insert into pos_state (id, state_json) values ($1, $2::jsonb) on conflict (id) do nothing",
+      [STATE_ROW_ID, JSON.stringify(createDefaultState())],
+    );
+    result = await pool.query(select, [STATE_ROW_ID]);
   }
-
-  const seeded = createDefaultState();
-  await savePosState(seeded);
-  return seeded;
+  const record = result.rows[0];
+  return { state: normalizeState(record.state_json), revision: String(record.revision) };
 }
 
-export async function savePosState(input: unknown) {
+export async function savePosState(input: unknown, revision: string) {
   await ensurePosSchema();
 
   const nextState: PosState = normalizeState(input);
-  await pool.query(
+  const result = await pool.query(
     `
-      insert into pos_state (id, state_json, updated_at)
-      values ($1, $2::jsonb, now())
-      on conflict (id)
-      do update set state_json = excluded.state_json, updated_at = now()
+      update pos_state
+      set state_json = $2::jsonb, updated_at = greatest(clock_timestamp(), updated_at + interval '1 microsecond')
+      where id = $1 and updated_at::text = $3
+      returning updated_at::text as revision
     `,
-    [STATE_ROW_ID, JSON.stringify(nextState)],
+    [STATE_ROW_ID, JSON.stringify(nextState), revision],
   );
-
-  return nextState;
+  return result.rows[0] ? String(result.rows[0].revision) : null;
 }

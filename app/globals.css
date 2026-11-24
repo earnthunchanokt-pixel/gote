@@ -1,32 +1,27 @@
 @import "tailwindcss";
 
 :root {
-  --bg: #fff9ff;
-  --shell:
-    radial-gradient(circle at top left, rgba(255, 203, 225, 0.9) 0, rgba(255, 203, 225, 0) 28%),
-    radial-gradient(circle at top right, rgba(255, 233, 184, 0.75) 0, rgba(255, 233, 184, 0) 30%),
-    radial-gradient(circle at 20% 80%, rgba(196, 238, 255, 0.88) 0, rgba(196, 238, 255, 0) 26%),
-    radial-gradient(circle at 80% 78%, rgba(212, 251, 214, 0.85) 0, rgba(212, 251, 214, 0) 28%),
-    radial-gradient(circle at 50% 45%, rgba(228, 217, 255, 0.62) 0, rgba(228, 217, 255, 0) 34%),
-    linear-gradient(180deg, #fffdfd 0%, #fff7fb 34%, #f7fbff 68%, #fffef8 100%);
-  --surface: rgba(255, 255, 255, 0.78);
-  --surface-soft: rgba(255, 255, 255, 0.56);
-  --line: rgba(218, 199, 233, 0.72);
-  --line-soft: rgba(234, 219, 244, 0.68);
-  --table-line: rgba(234, 228, 243, 0.82);
-  --text: #37254f;
-  --text-body: #503667;
-  --muted: #806796;
-  --subtle: #b09fc2;
-  --sky: #8b5cf6;
-  --sky-soft: #f5edff;
+  --bg: #f6f8fb;
+  --shell: linear-gradient(180deg, #ffffff 0%, #f6f8fb 42%, #eef4f7 100%);
+  --surface: #ffffff;
+  --surface-soft: #f7fafc;
+  --line: #d8e0e7;
+  --line-soft: #e7edf2;
+  --table-line: #e5ebf0;
+  --text: #172033;
+  --text-body: #263548;
+  --muted: #64748b;
+  --subtle: #94a3b8;
+  --sky: #0f7ea8;
+  --sky-soft: #e8f7fb;
   --emerald-soft: #eefcf2;
   --emerald-deep: #2f8a67;
   --amber-soft: #fff7df;
   --amber-deep: #b7791f;
   --rose-soft: #fff0f7;
   --rose-deep: #c25183;
-  --shadow-soft: 0 18px 45px rgba(157, 124, 188, 0.14);
+  --shadow-soft: 0 18px 42px rgba(15, 23, 42, 0.08);
+  --shadow-lift: 0 12px 28px rgba(15, 126, 168, 0.16);
 }
 
 * {
@@ -44,7 +39,6 @@ body {
   font-family: "Sarabun", "Noto Sans Thai", ui-sans-serif, system-ui, sans-serif;
   font-feature-settings: "tnum";
   background: var(--shell);
-  background-attachment: fixed;
 }
 
 button,
@@ -55,31 +49,36 @@ textarea {
 }
 
 ::selection {
-  background: rgba(236, 156, 210, 0.34);
+  background: rgba(14, 165, 233, 0.18);
 }
 
 .glass-panel {
   background: var(--surface);
   border: 1px solid var(--line);
   box-shadow: var(--shadow-soft);
-  backdrop-filter: blur(16px) saturate(135%);
 }
 
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background:
-    linear-gradient(120deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04)),
-    repeating-linear-gradient(
-      135deg,
-      rgba(255, 255, 255, 0.18) 0,
-      rgba(255, 255, 255, 0.18) 10px,
-      rgba(255, 255, 255, 0.06) 10px,
-      rgba(255, 255, 255, 0.06) 20px
-    );
-  opacity: 0.45;
+input,
+select,
+textarea {
+  background: #ffffff;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  border-color: var(--sky);
+  box-shadow: 0 0 0 4px rgba(14, 165, 233, 0.12);
+}
+
+button {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgba(14, 165, 233, 0.34);
+  outline-offset: 2px;
 }
 
 .fade-up {
